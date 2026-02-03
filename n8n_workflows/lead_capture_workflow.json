@@ -1,0 +1,185 @@
+{
+  "name": "Lead Capture & Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-capture",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "webhook-1",
+      "name": "Webhook - New Lead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "name",
+              "value": "={{ $json.data.name }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.data.email }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.data.phone }}"
+            },
+            {
+              "name": "industry",
+              "value": "={{ $json.data.industry }}"
+            },
+            {
+              "name": "lead_score",
+              "value": "={{ $json.data.lead_score }}"
+            },
+            {
+              "name": "source",
+              "value": "={{ $json.data.source || 'ai_agent' }}"
+            }
+          ]
+        }
+      },
+      "id": "set-1",
+      "name": "Format Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.lead_score }}",
+              "operation": "largerEqual",
+              "value2": 70
+            }
+          ]
+        }
+      },
+      "id": "if-1",
+      "name": "Check Lead Quality",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#sales-leads",
+        "text": "🔥 *Hot Lead Alert!*\n\n*Name:* {{ $json.name }}\n*Email:* {{ $json.email }}\n*Industry:* {{ $json.industry }}\n*Score:* {{ $json.lead_score }}/100\n\nPlease follow up ASAP!",
+        "otherOptions": {}
+      },
+      "id": "slack-1",
+      "name": "Notify Slack (Hot Lead)",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": "Leads",
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        }
+      },
+      "id": "sheets-1",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "Cảm ơn bạn đã quan tâm!",
+        "emailType": "text",
+        "message": "Chào {{ $json.name }},\n\nCảm ơn bạn đã quan tâm đến dịch vụ của chúng tôi.\n\nChúng tôi sẽ liên hệ lại trong thời gian sớm nhất.\n\nTrân trọng!"
+      },
+      "id": "gmail-1",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - New Lead": {
+      "main": [
+        [
+          {
+            "node": "Format Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Check Lead Quality",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Lead Quality": {
+      "main": [
+        [
+          {
+            "node": "Notify Slack (Hot Lead)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack (Hot Lead)": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
