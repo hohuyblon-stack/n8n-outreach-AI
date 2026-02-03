@@ -1,0 +1,163 @@
+# Docker Compose for Self-Hosted n8n + AI Lead Agent
+# ================================================
+#
+# This setup includes:
+# - n8n (workflow automation) - FREE self-hosted
+# - AI Lead Agent API Server
+# - PostgreSQL database (optional, for n8n)
+#
+# Usage:
+#   cd docker
+#   docker-compose up -d
+#
+# Access:
+#   n8n: http://localhost:5678
+#   Agent API: http://localhost:8000
+#   Dashboard: http://localhost:8080
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # n8n - Workflow Automation (FREE)
+  # ==========================================
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Basic Settings
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+
+      # Webhook URL (important for external triggers)
+      - WEBHOOK_URL=http://localhost:5678/
+
+      # Timezone
+      - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
+      - TZ=Asia/Ho_Chi_Minh
+
+      # Database (use SQLite for simplicity)
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+
+      # Execution settings
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+
+      # Allow localhost connections
+      - N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN=true
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-custom-nodes:/home/node/.n8n/custom
+
+    networks:
+      - lead-agent-network
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # AI Lead Agent - API Server
+  # ==========================================
+  lead-agent-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lead-agent-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # API Keys (set in .env file)
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+      # Company Info
+      - SENDER_NAME=${SENDER_NAME:-AI Agent}
+      - COMPANY_NAME=${COMPANY_NAME:-Your Company}
+      - COMPANY_PHONE=${COMPANY_PHONE}
+
+      # Database
+      - DATABASE_URL=sqlite:///./data/leads.db
+
+    volumes:
+      - agent_data:/app/data
+      - agent_logs:/app/logs
+
+    networks:
+      - lead-agent-network
+
+    depends_on:
+      - n8n
+
+  # ==========================================
+  # AI Lead Agent - Scheduler (replaces n8n)
+  # ==========================================
+  lead-agent-scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lead-agent-scheduler
+    restart: unless-stopped
+    command: python run_scheduler.py --with-dashboard --port 8080
+    ports:
+      - "8080:8080"
+    environment:
+      # API Keys
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+      # Company Info
+      - SENDER_NAME=${SENDER_NAME:-AI Agent}
+      - COMPANY_NAME=${COMPANY_NAME:-Your Company}
+
+      # Scheduler Settings
+      - SCHEDULE_KEYWORDS=${SCHEDULE_KEYWORDS:-spa,cafe}
+      - SCHEDULE_LOCATIONS=${SCHEDULE_LOCATIONS:-TP.HCM}
+      - SCHEDULE_SEARCH_HOURS=24
+      - SCHEDULE_FOLLOWUP_HOURS=8
+
+      # Notifications
+      - TELEGRAM_ENABLED=${TELEGRAM_ENABLED:-false}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - DISCORD_ENABLED=${DISCORD_ENABLED:-false}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+
+      # Database (shared with API)
+      - DATABASE_URL=sqlite:///./data/leads.db
+
+    volumes:
+      - agent_data:/app/data
+      - agent_logs:/app/logs
+
+    networks:
+      - lead-agent-network
+
+# ==========================================
+# Volumes
+# ==========================================
+volumes:
+  n8n_data:
+    driver: local
+  agent_data:
+    driver: local
+  agent_logs:
+    driver: local
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  lead-agent-network:
+    driver: bridge

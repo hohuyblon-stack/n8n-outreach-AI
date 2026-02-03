@@ -1,292 +1,300 @@
 # 🤖 AI Lead Generation Agent
 
-Một AI Agent chuyên nghiệp cho việc tìm kiếm khách hàng tiềm năng và tự động hóa quy trình outreach. Agent này có khả năng:
+Một AI Agent chuyên nghiệp cho việc tìm kiếm khách hàng tiềm năng và tự động hóa quy trình outreach.
+
+## ✨ Tính năng
 
 - 🔍 **Tìm kiếm doanh nghiệp** từ Google Maps theo ngành nghề và vị trí
-- 📊 **Phân tích và chấm điểm** lead dựa trên nhiều tiêu chí
-- 📧 **Tạo email cá nhân hóa 100%** bằng AI
-- 🔄 **Tích hợp n8n** cho workflow automation
-- 📈 **Theo dõi và báo cáo** hiệu quả chiến dịch
+- 📊 **Phân tích và chấm điểm** lead (0-100) dựa trên digital maturity
+- 📧 **Tạo email cá nhân hóa 100%** bằng AI (OpenAI/Claude)
+- 🔔 **Thông báo real-time** qua Telegram/Discord
+- 📈 **Web Dashboard** theo dõi trực quan
+- ⏰ **Built-in Scheduler** - KHÔNG cần n8n!
+- 🐳 **Docker support** cho dễ deploy
+
+---
 
 ## 🚀 Quick Start
 
-### 1. Cài đặt
+### Cách 1: Chạy Local (Đơn giản nhất)
 
 ```bash
-# Clone repository
+# 1. Clone và cài đặt
 git clone <repo-url>
 cd n8n-outreach-AI
-
-# Tạo virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# hoặc: venv\Scripts\activate  # Windows
-
-# Cài đặt dependencies
 pip install -r requirements.txt
-```
 
-### 2. Cấu hình
-
-```bash
-# Copy file cấu hình mẫu
+# 2. Cấu hình
 cp .env.example .env
+# Sửa .env với API keys của bạn
 
-# Chỉnh sửa .env với API keys của bạn
-nano .env
-```
-
-**Cấu hình cần thiết:**
-```env
-# Google Maps API (bắt buộc cho search)
-GOOGLE_MAPS_API_KEY=your-api-key
-
-# OpenAI API (tùy chọn, cho AI email generation)
-OPENAI_API_KEY=sk-...
-
-# Thông tin công ty (cho email)
-SENDER_NAME=Tên của bạn
-COMPANY_NAME=Tên công ty
-COMPANY_PHONE=0901234567
-```
-
-### 3. Khởi tạo
-
-```bash
+# 3. Khởi tạo
 python main.py init
-```
 
-### 4. Chạy Demo
-
-```bash
+# 4. Chạy demo
 python main.py demo
+
+# 5. Chạy scheduler tự động (thay thế n8n!)
+python run_scheduler.py --with-dashboard
 ```
 
-## 📋 Hướng dẫn sử dụng
+### Cách 2: Docker (Recommended cho Production)
 
-### CLI Commands
-
-#### Tìm kiếm doanh nghiệp
 ```bash
-python main.py search --keyword "spa" --location "TP.HCM" --max 50
+cd docker
+cp .env.example .env
+# Sửa .env với API keys
+
+docker-compose up -d
 ```
 
-#### Tạo email campaign (không gửi)
-```bash
-python main.py generate \
-    --keyword "nha khoa" \
-    --location "Quận 1" \
-    --campaign "Nha Khoa Q1" \
-    --max 20
-```
+**Truy cập:**
+- Dashboard: http://localhost:8080
+- API: http://localhost:8000
+- n8n (optional): http://localhost:5678
 
-#### Chạy outreach (gửi email thật)
-```bash
-python main.py outreach \
-    --keyword "cafe" \
-    --location "Đà Nẵng" \
-    --campaign "Cafe DN" \
-    --limit 10 \
-    --send  # Thêm flag này để gửi thật
-```
+---
 
-#### Xem thống kê
+## 📋 Các chế độ chạy
+
+### 1️⃣ CLI Mode - Chạy thủ công
+
 ```bash
+# Tìm kiếm leads
+python main.py search --keyword "spa" --location "TP.HCM"
+
+# Tạo email campaign
+python main.py generate --keyword "nha khoa" --location "Quận 1"
+
+# Xem thống kê
 python main.py stats
+
+# Export leads
+python main.py export --format json
 ```
 
-#### Export leads
-```bash
-python main.py export --format json --output my_leads
-```
-
-### API Server
-
-Chạy API server để tích hợp với n8n hoặc ứng dụng khác:
+### 2️⃣ Scheduler Mode - Tự động 24/7 (THAY THẾ n8n!)
 
 ```bash
-# Development
-uvicorn api_server:app --reload --port 8000
+# Chạy scheduler + dashboard
+python run_scheduler.py --with-dashboard
 
-# Production
-uvicorn api_server:app --host 0.0.0.0 --port 8000
+# Chỉ scheduler (không dashboard)
+python run_scheduler.py
+
+# Chỉ dashboard
+python run_scheduler.py --dashboard-only
+
+# Custom keywords và locations
+python run_scheduler.py --keywords "spa,gym" --locations "Đà Nẵng,Huế"
 ```
 
-**API Endpoints:**
+### 3️⃣ API Mode - Tích hợp với app khác
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| GET | `/api/stats` | Thống kê tổng quan |
-| POST | `/api/search` | Tìm kiếm leads |
-| POST | `/api/generate` | Pipeline đầy đủ |
-| GET | `/api/leads` | Danh sách leads |
-| GET | `/api/leads/{id}` | Chi tiết lead |
-| POST | `/api/generate-email` | Tạo email cho lead |
-| POST | `/api/analyze` | Phân tích business |
-| POST | `/webhook/lead-capture` | Webhook nhận leads |
-
-**Ví dụ:**
 ```bash
-# Tìm kiếm spa ở TP.HCM
-curl -X POST http://localhost:8000/api/search \
-  -H "Content-Type: application/json" \
-  -d '{"keyword": "spa", "location": "TP.HCM", "max_results": 20}'
-
-# Phân tích một business
-curl -X POST http://localhost:8000/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Spa ABC",
-    "address": "123 Nguyễn Huệ, Q1",
-    "email": "contact@spa-abc.vn",
-    "industry": "spa",
-    "rating": 4.5
-  }'
+uvicorn api_server:app --port 8000
 ```
 
-## 🔧 Tích hợp n8n
+---
 
-### Import Workflows
+## 🔔 Cấu hình Notifications
 
-Trong thư mục `n8n_workflows/` có sẵn các workflow mẫu:
+### Telegram (Khuyên dùng!)
 
-1. **lead_capture_workflow.json** - Nhận và xử lý lead mới
-2. **email_sequence_workflow.json** - Tự động gửi email follow-up
+1. Tạo bot qua [@BotFather](https://t.me/BotFather) trên Telegram
+2. Gửi `/newbot` và làm theo hướng dẫn
+3. Lưu lại **bot token**
+4. Gửi tin nhắn cho bot của bạn
+5. Truy cập URL này để lấy **chat_id**:
+   ```
+   https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates
+   ```
+6. Cập nhật `.env`:
+   ```env
+   TELEGRAM_ENABLED=true
+   TELEGRAM_BOT_TOKEN=123456789:ABC-DEF...
+   TELEGRAM_CHAT_ID=987654321
+   ```
 
-**Cách import:**
-1. Mở n8n
-2. Vào Settings > Import from File
-3. Chọn file JSON workflow
+### Discord
 
-### Cấu hình Webhook
+1. Vào Server Settings → Integrations → Webhooks
+2. Create Webhook → Copy URL
+3. Cập nhật `.env`:
+   ```env
+   DISCORD_ENABLED=true
+   DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/xxx/xxx
+   ```
 
-Trong n8n, cấu hình webhook URL:
+### Test Notification
+
+```bash
+python run_scheduler.py test-notify
 ```
-http://your-server:8000/webhook/lead-capture
+
+---
+
+## 🐳 Self-Host n8n (Miễn phí!)
+
+Nếu vẫn muốn dùng n8n, bạn có thể self-host miễn phí:
+
+### Cách 1: Chỉ n8n
+```bash
+cd docker
+docker-compose -f docker-compose.n8n-only.yml up -d
 ```
+
+### Cách 2: Full stack (n8n + Agent)
+```bash
+cd docker
+docker-compose up -d
+```
+
+**Truy cập n8n:** http://localhost:5678
+- Username: admin
+- Password: admin123 (đổi trong .env!)
+
+### Import Workflows vào n8n
+
+1. Mở n8n → Workflows → Import from File
+2. Import các file trong `n8n_workflows/`:
+   - `lead_capture_workflow.json` - Nhận leads mới
+   - `email_sequence_workflow.json` - Gửi follow-up tự động
+
+---
 
 ## 📁 Cấu trúc Project
 
 ```
 n8n-outreach-AI/
-├── main.py              # CLI entry point
-├── api_server.py        # FastAPI server
-├── requirements.txt     # Dependencies
-├── .env.example         # Environment template
+├── main.py              # CLI interface
+├── run_scheduler.py     # ⭐ Standalone scheduler (thay n8n)
+├── api_server.py        # REST API server
 │
 ├── src/
 │   ├── scraper/         # Google Maps & Web scraping
-│   │   ├── google_maps_scraper.py
-│   │   ├── web_scraper.py
-│   │   └── base_scraper.py
-│   │
-│   ├── analyzer/        # Business analysis & scoring
-│   │   └── business_analyzer.py
-│   │
-│   ├── email_generator/ # AI email generation
-│   │   └── email_generator.py
-│   │
-│   ├── database/        # SQLite + SQLAlchemy
-│   │   ├── models.py
-│   │   └── database.py
-│   │
-│   ├── agent/           # Main orchestrator
-│   │   └── lead_agent.py
-│   │
-│   └── utils/           # Utilities
-│       ├── n8n_integration.py
-│       └── email_sender.py
+│   ├── analyzer/        # Lead scoring & analysis
+│   ├── email_generator/ # AI email personalization
+│   ├── database/        # SQLite CRM
+│   ├── scheduler/       # ⭐ Built-in scheduler
+│   ├── notifications/   # ⭐ Telegram/Discord alerts
+│   ├── dashboard/       # ⭐ Web dashboard
+│   └── agent/           # Main orchestrator
 │
-├── config/
-│   └── settings.py      # Configuration management
+├── docker/              # Docker configs
+│   ├── docker-compose.yml          # Full stack
+│   └── docker-compose.n8n-only.yml # n8n only
 │
-├── n8n_workflows/       # n8n workflow templates
-├── data/                # Database & exports
-└── logs/                # Application logs
+└── n8n_workflows/       # n8n workflow templates
 ```
-
-## 🎯 Các ngành nghề được hỗ trợ
-
-Agent có templates và analysis rules tối ưu cho:
-
-- 💆 **Spa & Beauty** - Đặt lịch online, marketing Instagram
-- ☕ **Café & F&B** - Loyalty program, đặt hàng online
-- 🦷 **Nha khoa** - Website y tế, patient education
-- 🏋️ **Gym & Fitness** - Membership, PT booking
-- 🏨 **Khách sạn** - Booking, reputation management
-- 🏠 **Bất động sản** - Lead gen, property marketing
-- 📚 **Giáo dục** - Enrollment, course marketing
-
-## 📊 Lead Scoring
-
-Hệ thống chấm điểm lead từ 0-100 dựa trên:
-
-| Tiêu chí | Điểm |
-|----------|------|
-| Có email | +10 |
-| Có số điện thoại | +10 |
-| Digital maturity thấp | +20 |
-| Không có website | +15 |
-| Không có social media | +10 |
-| Rating cao (4.0+) | +10 |
-| Ít reviews (cần visibility) | +10 |
-
-**Phân loại:**
-- 🔥 **Hot** (75-100): Liên hệ ngay
-- 🌡️ **Warm** (50-74): Tiềm năng cao
-- ❄️ **Cold** (30-49): Cần nurture
-- ⛔ **Unqualified** (<30): Không phù hợp
-
-## 📧 Email Templates
-
-Agent tự động chọn template phù hợp với:
-
-1. **Ngành nghề** của business
-2. **Pain points** được xác định
-3. **Loại email** (first contact, follow-up 1, follow-up 2)
-4. **Lead quality** (hot lead nhận offer mạnh hơn)
-
-**Personalization hooks:**
-- Tên doanh nghiệp
-- Rating và reviews
-- Vị trí (quận/thành phố)
-- Dịch vụ cụ thể
-- Pain points riêng
-
-## ⚠️ Lưu ý quan trọng
-
-### Rate Limiting
-- Google Maps API: 100 requests/day (free tier)
-- Email gửi: Mặc định 100/ngày
-- Delay giữa requests: 2 giây
-
-### Best Practices
-1. **Không spam** - Tối đa 3 emails/lead
-2. **Personalize** - Đảm bảo mỗi email unique
-3. **Test trước** - Dùng `--dry-run` trước khi gửi thật
-4. **Monitor** - Theo dõi open/reply rate
-
-### Legal
-- Tuân thủ PDPA và luật spam email
-- Chỉ contact business emails (không personal)
-- Cung cấp option unsubscribe
-
-## 🤝 Contributing
-
-1. Fork repository
-2. Tạo feature branch
-3. Commit changes
-4. Push và tạo Pull Request
-
-## 📄 License
-
-MIT License - Xem file LICENSE
-
-## 🙋 Support
-
-- Issues: GitHub Issues
-- Email: support@example.com
 
 ---
 
-Made with ❤️ by AI Agent Team
+## 📊 Lead Scoring System
+
+| Score | Quality | Action |
+|-------|---------|--------|
+| 75-100 | 🔥 Hot | Contact ngay! |
+| 50-74 | 🌡️ Warm | Nurture |
+| 30-49 | ❄️ Cold | Long-term |
+| <30 | ⛔ Unqualified | Skip |
+
+**Tiêu chí chấm điểm:**
+- Có email/phone: +20
+- Không có website: +15 (cơ hội!)
+- Không có social: +10
+- Rating cao: +10
+- Ít reviews: +10 (cần visibility)
+
+---
+
+## ⚙️ Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `GOOGLE_MAPS_API_KEY` | Google Maps API key | ✅ Yes |
+| `OPENAI_API_KEY` | OpenAI for AI emails | Optional |
+| `SCHEDULE_KEYWORDS` | Ngành nghề (spa,cafe) | Optional |
+| `SCHEDULE_LOCATIONS` | Địa điểm | Optional |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot | Optional |
+| `TELEGRAM_CHAT_ID` | Telegram chat | Optional |
+
+Xem đầy đủ trong `.env.example`
+
+---
+
+## 🔧 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/search` | Tìm kiếm leads |
+| POST | `/api/generate` | Full pipeline |
+| GET | `/api/leads` | Danh sách leads |
+| POST | `/api/generate-email` | Tạo email |
+| POST | `/api/analyze` | Phân tích business |
+| GET | `/api/stats` | Thống kê |
+
+---
+
+## 📱 Preview
+
+### Telegram Alert
+```
+🔥 HOT LEAD ALERT!
+
+Spa Hoa Sen
+📍 123 Nguyễn Huệ, Q1, TP.HCM
+📧 contact@hoasenspa.vn
+📊 Lead Score: 85/100
+
+💡 Recommended: Tặng 1 tháng quảng cáo miễn phí
+
+Follow up ngay!
+```
+
+### Web Dashboard
+```
+┌─────────────────────────────────────────┐
+│  🤖 AI Lead Agent Dashboard             │
+├─────────────────────────────────────────┤
+│  Total: 156    Sent: 89    Reply: 12%   │
+├─────────────────────────────────────────┤
+│  🔥 Hot Leads                           │
+│  ├─ Spa Hoa Sen - 85/100                │
+│  ├─ Nha Khoa ABC - 78/100               │
+│  └─ Café XYZ - 72/100                   │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## ❓ FAQ
+
+**Q: Cần những API key nào?**
+- Bắt buộc: Google Maps API key
+- Optional: OpenAI (cho AI email) - có thể dùng templates sẵn
+
+**Q: Có mất phí không?**
+- Google Maps: Free tier $200/tháng (~28,500 requests)
+- OpenAI: ~$0.01/email (optional)
+- Self-host: Miễn phí 100%
+
+**Q: Scheduler vs n8n?**
+- **Scheduler**: Đơn giản, không cần setup thêm, nhẹ
+- **n8n**: UI kéo thả, flexible hơn, nhiều integrations
+
+**Q: Làm sao lấy Google Maps API key?**
+1. Vào [Google Cloud Console](https://console.cloud.google.com/)
+2. Tạo project mới
+3. Enable "Places API" và "Maps JavaScript API"
+4. Tạo API key trong Credentials
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+Made with ❤️ for Vietnamese SMBs

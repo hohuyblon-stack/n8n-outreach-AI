@@ -1,0 +1,44 @@
+# Docker Compose - n8n Only (Simple Setup)
+# =========================================
+#
+# This is the simplest way to self-host n8n for FREE.
+#
+# Usage:
+#   docker-compose -f docker-compose.n8n-only.yml up -d
+#
+# Access:
+#   http://localhost:5678
+#   Username: admin
+#   Password: admin123 (change in .env!)
+
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Authentication
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+
+      # Timezone (Vietnam)
+      - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
+      - TZ=Asia/Ho_Chi_Minh
+
+      # Use SQLite (simplest)
+      - DB_TYPE=sqlite
+
+      # Keep execution history for 7 days
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:
